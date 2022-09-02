@@ -4,31 +4,55 @@
 # https://docs.microsoft.com/azure/devops/pipelines/apps/aspnet/build-aspnet-4
 
 trigger:
-- main
+- '*'
 
 pool:
-  vmImage: 'windows-latest'
+  vmImage: 'ubuntu-latest'
+  demands:
+  - npm
+
 
 variables:
   solution: '**/*.sln'
+  projects: '**/*.csproj'
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
 
 steps:
 - task: NuGetToolInstaller@1
 
-- task: NuGetCommand@2
+- task: UseDotNet@2
+  displayName: 'aquire .Net Core'
   inputs:
-    restoreSolution: '$(solution)'
+    version: '6.x'
+    packageType: sdk
 
-- task: VSBuild@1
+- script: dotnet --info && chmod +x ./build.sh && sudo ./build.sh --skipFunctionalTest="0"
+  displayName: 'dotnet compile and Test'
+   
+- task: DotNetCoreCLI@2
+  displayName: 'Restore project dependencies'
   inputs:
-    solution: '$(solution)'
-    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)"'
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
+    command: 'restore'
+    projects: '$(projects)'
 
-- task: VSTest@2
+- task: DotNetCoreCLI@2
+  displayName: 'Build the project - Release'
   inputs:
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
+    command: 'build'
+    arguments: '--no-restore --configuration release'
+    projects: '$(projects)'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Publish the Project Release'
+  inputs:
+    command: 'publish'
+    projects: '$(projects)'
+    publishWebProjects: false
+    arguments: '--no-build --configuration Release --output PackageLocation="$(build.artifactStagingDirectory)")/Release'
+    zipAfterPublish: true
+  
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: drop'
+  condition: suceeded()
+  
