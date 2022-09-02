@@ -27,7 +27,7 @@ steps:
     version: '6.x'
     packageType: sdk
 
-- script: dotnet --info && chmod +x ./build.sh && sudo ./build.sh --skipFunctionalTest="0"
+- script: dotnet --info 
   displayName: 'dotnet compile and Test'
    
 - task: DotNetCoreCLI@2
